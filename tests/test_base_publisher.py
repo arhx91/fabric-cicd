@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from fabric_cicd import constants
-from fabric_cicd._common._exceptions import FailedPublishedItemStatusError, PublishError
+from fabric_cicd._common._exceptions import FailedPublishedItemStatusError, InvokeError, PublishError
 from fabric_cicd._common._item import Item
 from fabric_cicd._items._base_publisher import ItemPublisher, ParallelConfig
 from fabric_cicd._items._lakehouse import LakehousePublisher
@@ -76,6 +76,20 @@ def test_publish_error_names_post_publish_failure_when_both_fail():
     assert error.__cause__ is hook_error
     assert str(error) == (
         f"Failed to publish 1 item(s): ['LakehouseA']. The post-publish step also failed: {POST_PUBLISH_MESSAGE}"
+    )
+
+
+def test_publish_error_keeps_additional_info_of_post_publish_failure():
+    # FabricEndpoint.invoke() puts the request and response log in additional_info
+    request_log = "URL: https://api.fabric.microsoft.com/v1/workspaces/ws/items/b-guid/shortcuts\nStatus: 403"
+    hook_error = InvokeError(Exception("Operation failed. Error Code: Forbidden"), logger, request_log)
+    publisher = _StubPublisher(["LakehouseA"], hook_error)
+
+    with pytest.raises(PublishError) as exc_info:
+        publisher.publish_all()
+
+    assert exc_info.value.additional_info == (
+        f"\n--- LakehouseA ---\ndefinition rejected\n\n--- post_publish_all ---\n{request_log}"
     )
 
 

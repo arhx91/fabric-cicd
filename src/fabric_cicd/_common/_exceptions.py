@@ -76,6 +76,9 @@ class PublishError(BaseCustomError):
         additional_info_parts = []
         for item_name, exc in errors:
             additional_info_parts.append(f"\n--- {item_name} ---\n{exc!s}")
+        post_publish_info = getattr(post_publish_error, "additional_info", None)
+        if post_publish_info:
+            additional_info_parts.append(f"\n--- post_publish_all ---\n{post_publish_info}")
         additional_info = "\n".join(additional_info_parts) if additional_info_parts else None
 
         super().__init__(message, logger, additional_info)
